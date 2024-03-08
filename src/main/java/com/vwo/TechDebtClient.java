@@ -1,49 +1,66 @@
 package com.vwo;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.vwo.model.FlagDetails;
+import com.vwo.parsers.FeatureFlagParser;
+import com.vwo.utils.CLIUtils;
+import com.vwo.utils.Constants;
+import com.vwo.utils.FlagUtils;
+import com.vwo.utils.GitUtils;
 import com.vwo.utils.NetworkUtils;
 
 public class TechDebtClient {
-	// regex to identify getFlag()
-    private static final String REGEX = "\\.getFlag[(]\\s*[\"']([^\"']*)[\"']\\s*[)]";
-    
-    // source code file extensions
-    private static final String JS_FILEEXTENSION = ".js";
-    
-    // flag details
-    // HashMap<String, FlagDetails> flagDetails = new HashMap<String, FlagDetails>();
+	public static ArrayList<String> featureFlags;
+	public static ArrayList<FlagDetails> flagDetails;
+	
+	// variable flagkey assignments
+	public static HashMap<String, String> flagKeyVars = new HashMap<String, String>();
 
     public static void main(String[] args) {
     	HashMap<String, FlagDetails> flagDetails_hash = new HashMap<String, FlagDetails>();
-    	
-    	// check params
-        if (args.length != 6) {
-            System.err.println("Insufficient params");
-            System.exit(1);
+    	GitUtils gitUtils;
+        
+        // get mandatory params
+        HashMap<String, String> params = CLIUtils.extractCommandLineParams(args);
+        String directory = params.get(Constants.param_sourceFolder);
+        String accountId = params.get(Constants.param_accountId);
+        String apiToken = params.get(Constants.param_apiToken);
+        
+        // System.out.println(apiToken);
+        
+        // get optional params
+        boolean isReferenceCode = params.containsKey(Constants.param_isReferenceCode) ?
+        		Boolean.parseBoolean(params.get(Constants.param_isReferenceCode)) : false;
+        boolean isTesting = params.containsKey(Constants.param_isTesting) ?
+        		Boolean.parseBoolean(params.get(Constants.param_isTesting)) : false;
+        String repoURL = params.containsKey(Constants.param_repoURL) ? params.get(Constants.param_repoURL) : null;
+        String repoBranch = params.containsKey(Constants.param_repoBranch) ? params.get(Constants.param_repoBranch) : null;
+        String repoName;
+        
+        // get git repo name and branch if not set from command line (not coming from jenkins job)
+    	gitUtils = new GitUtils(directory);
+        if (repoURL==null && repoBranch==null) {
+        	repoName = gitUtils.getGitRepoName();
+        	repoBranch = gitUtils.getGitRepoBranch();
+        } else {
+        	// extract repo name from repo url
+        	repoName = gitUtils.extractRepoName(repoURL);
         }
-
-        // get the params
-        String directory = args[0];
-        String accountId = args[1];
-        String repoName = args[2];
-        String repoBranch = args[3];
-        boolean isReferenceCode = Boolean.parseBoolean(args[4]);
-        String apiToken = args[5];
         
         // marker
-        System.out.println(accountId + " - " + directory + " - " + repoName + " - " + repoBranch + " - " + isReferenceCode);
+        System.out.println("\nStarted VWO Tech Debt Client on " + repoName + ":" + repoBranch);
+        
+        // get all feature flags for account
+        System.out.println("Getting all feature flags for account : " + accountId);
+        featureFlags = FeatureFlagParser.extractFeatureKeys(NetworkUtils.getFlagsForAccount(apiToken, isTesting));
+        System.out.println("Received " + (featureFlags!=null ? featureFlags.size() : 0) + " Flags For Account");
 
         // get the flag details from the code base
-        ArrayList<FlagDetails> flagDetails = searchSourceFiles(new File(directory), REGEX, repoName, repoBranch, isReferenceCode);
+        System.out.println("Extracting flag details from the code base");
+        flagDetails = FlagUtils.searchSourceFiles(new File(directory), Constants.REGEX_getFlag, isReferenceCode, directory);
         
         // parse through the flag keys and combine common keys with added code references
         for (FlagDetails flagDetail : flagDetails) {
@@ -58,91 +75,16 @@ public class TechDebtClient {
         // convert the hashmap back to arraylist
         flagDetails = new ArrayList<FlagDetails>(flagDetails_hash.values());
         
-        for (FlagDetails flagDetail : flagDetails) {
-        	System.out.println("\nFlag : " + flagDetail.getFlagKey());
-        	System.out.println("RepoName : " + flagDetail.getRepoName());
-        	System.out.println("RepoBranch : " + flagDetail.getRepoBranch());
-        	// System.out.println("Code References : " + flagDetail.getCodeReference().toString());
-            
-            // remove file content before sending to backend servers if flag not set
-        	// if(!isReferenceCode)
-        		// flagDetail.getCodeReference().setReferenceCode(null);
-        }
+        // replace variables used instead of flagkeys with actual flag keys
+        FlagUtils.replaceVarsWithFlagKeys(flagDetails, featureFlags, flagKeyVars);
         
-        // send flag details to server and get response
-        String response = NetworkUtils.makeHttpCall(accountId, flagDetails, apiToken);
-        
-        // marker
-        System.out.println("Network Response : " + response);
-        
-        // show warnings to the user
-    }
-    
-    // show warnings to the user
-    public static void displayFlagWarnings(String response) {
-    	
-    }
-
-    // search source files
-    public static ArrayList<FlagDetails> searchSourceFiles(File directory, String regex, String repoName, String repoBranch, boolean isAddCodeSnippet) {
-        ArrayList<FlagDetails> flagDetails = new ArrayList<FlagDetails>();
-        File[] files = directory.listFiles();
-        if (files != null) {
-        	// parse through the files in the mentioned directory
-            for (File file : files) {
-                if (file.isDirectory()) {
-                	// recursively search inside any sub directory
-                    flagDetails.addAll(searchSourceFiles(file, regex, repoName, repoBranch, isAddCodeSnippet));
-                } else if (file.getName().endsWith(JS_FILEEXTENSION)) {
-                	// add files that match the mentioned file extension
-                    flagDetails.addAll(searchRegexInSourceFile(file, regex, repoName, repoBranch, isAddCodeSnippet));
-                }
-            }
-        }
-        
-        return flagDetails;
-    }
-
-    // search for flag in source file
-    public static ArrayList<FlagDetails> searchRegexInSourceFile(File file, String regex, String repoName, String repoBranch, boolean isAddCodeSnippet) {
-        ArrayList<FlagDetails> flagDetails = new ArrayList<FlagDetails>();
-        Pattern pattern = Pattern.compile(regex);
-        
+        // add a deliberate delay to bypass HTTP 429
         try {
-            int lineNumber = 0;
-            
-            // parse through each line of the file
-            for (String line : Files.readAllLines(Paths.get(file.getAbsolutePath()))) {
-            	// increment line number
-                lineNumber++;
-                
-                // if flag is found in the line, add it to the flag details
-                Matcher matcher = pattern.matcher(line);
-                while (matcher.find()) {
-                    String flagKey = matcher.group(1);
-                    int charNumber = line.indexOf(flagKey);
-                    
-                    // set line to null if flag not set
-                    line = isAddCodeSnippet ? line : null;
-                    
-                    // if flag exists, add to the flag's code reference
-                    /* if(flagDetails.containsKey(flagKey)) {
-                    	flagDetails.get(flagKey).addCodeReference(file.getName(), file.getParent(), lineNumber, charNumber, line);
-                    } else {
-                    	flagDetails.put(flagKey, new FlagDetails(flagKey, repoName, repoBranch, file.getName(), file.getParent(), lineNumber, charNumber, line));
-                    }
-                    */
-                    flagDetails.add(new FlagDetails(flagKey, repoName, repoBranch, file.getName(), file.getParent(), lineNumber, charNumber, line));
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error reading file: " + file.getAbsolutePath());
-            e.printStackTrace();
-        }
+        	Thread.sleep(3000);
+        } catch(InterruptedException e) {}
         
-        // convert the hashmap to arraylist
-        // flagDetails_arr = new ArrayList<FlagDetails>(flagDetails.values());
-        
-        return flagDetails;
+        // send flag details to the server and show recommendations to the user
+        System.out.println("Recommendations for feature flags : ");
+        new RecommendationHandler(NetworkUtils.sendFlagsGetRecos(accountId, repoName, repoBranch, flagDetails, apiToken, isTesting)).showRecommendation();
     }
 }

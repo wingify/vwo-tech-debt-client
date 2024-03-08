@@ -4,15 +4,11 @@ import java.util.ArrayList;
 
 public class FlagDetails {
 	private String flagKey;
-	private String repoName;
-	private String repoBranch;
 	private ArrayList<CodeReference> codeReferences = new ArrayList<FlagDetails.CodeReference>();
 	
 	// constructor
-	public FlagDetails(String flagKey, String repoName, String repoBranch, String fileName, String fileLocation, int lineNumber, int charNumber, String referenceCode) {
+	public FlagDetails(String flagKey, String fileName, String fileLocation, int lineNumber, int charNumber, String referenceCode) {
 		this.flagKey = flagKey;
-		this.repoName = repoName;
-		this.repoBranch = repoBranch;
 		this.codeReferences.add(new CodeReference(fileName, fileLocation, lineNumber, charNumber, referenceCode));
 	}
 
@@ -22,22 +18,6 @@ public class FlagDetails {
 
 	public void setFlagKey(String flagKey) {
 		this.flagKey = flagKey;
-	}
-
-	public String getRepoName() {
-		return repoName;
-	}
-
-	public void setRepoName(String repoName) {
-		this.repoName = repoName;
-	}
-
-	public String getRepoBranch() {
-		return repoBranch;
-	}
-
-	public void setRepoBranch(String repoBranch) {
-		this.repoBranch = repoBranch;
 	}
 
 	public ArrayList<CodeReference> getCodeReferences() {
@@ -114,12 +94,5 @@ public class FlagDetails {
 		public void setReferenceCode(String referenceCode) {
 			this.referenceCode = referenceCode;
 		}
-		
-		/*
-		@Override
-		public String toString() {
-			return fileName + " - " + fileLocation + " - " + lineNumber + " - " + charNumber + " - " + referenceCode;
-		}
-		*/
 	}
 }
