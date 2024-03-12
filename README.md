@@ -29,15 +29,15 @@ APIToken - VWO Developer API Token
 
 ## Third-party Resources and Credits
 
-Refer [third-party-attributions.txt](https://github.com/wingify/vwo-java-sdk/blob/master/third-party-attributions.txt)
+Refer [third-party-attributions.txt](https://github.com/wingify/vwo-tech-debt-client/blob/master/third-party-attributions.txt)
 
 ## Authors
 
-* Core Contributor & Maintainer - [pntgupta](https://github.com/pntgupta)
+* Core Contributor & Maintainer - [rohitesh-wingify](https://github.com/rohitesh-wingify)
 
 ## Changelog
 
-Refer [CHANGELOG.md](https://github.com/wingify/vwo-java-sdk/blob/master/CHANGELOG.md)
+Refer [CHANGELOG.md](https://github.com/wingify/vwo-tech-debt-client/blob/master/CHANGELOG.md)
 
 ## Contributing
 
@@ -50,4 +50,4 @@ Please go through our [contributing guidelines](https://github.com/wingify/vwo-t
 
 [Apache License, Version 2.0](https://github.com/wingify/vwo-tech-debt-client/blob/master/LICENSE)
 
-Copyright 2019-2022 Wingify Software Pvt. Ltd.
+Copyright 2024 Wingify Software Pvt. Ltd.

@@ -1,3 +1,19 @@
+/**
+ * Copyright 2024 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.vwo.utils;
 
 import java.io.BufferedReader;
@@ -18,12 +34,12 @@ public class FlagUtils {
     // substitute flag keys for variables in flag details
     public static void replaceVarsWithFlagKeys(ArrayList<FlagDetails> flagDetails, ArrayList<String> featureFlags, HashMap<String, String> flagKeyVars) {
     	HashMap<String, String> featureFlags_hash = new HashMap<String, String>();
-    	
+
     	// convert all feature flags in account to hashmap
     	for(String flag : featureFlags) {
     		featureFlags_hash.put(flag, "");
     	}
-    	
+
     	// parse through all flag details and check for unknown flags and check if they are variables, then substitute with actual flag
     	for(FlagDetails flagDetail : flagDetails) {
     		if(!featureFlags_hash.containsKey(flagDetail.getFlagKey())) {
@@ -50,7 +66,7 @@ public class FlagUtils {
                 }
             }
         }
-        
+
         return flagDetails;
     }
 
@@ -62,40 +78,40 @@ public class FlagUtils {
         Matcher matcher;
         String fileLocation;
         String line;
-        
+
         try {
             int lineNumber = 0;
-            
+
             // parse through each line of the file
             BufferedReader reader = new BufferedReader(new FileReader(file));
             // for (String line : Files.readAllLines(Paths.get(file.getAbsolutePath()))) {
             while ((line=reader.readLine()) != null) {
             	// increment line number
                 lineNumber++;
-                
+
                 // if flag is found in the line, add it to the flag details
                 pattern = Pattern.compile(regex);
                 matcher = pattern.matcher(line);
                 while (matcher.find()) {
                     String flagKey = matcher.group(1);
                     int charNumber = line.indexOf(flagKey);
-                    
+
                     // set line to null if flag not set
                     // line = isAddCodeSnippet ? line : null;
-                    
+
                     // only retain the relative path in file location
                     fileLocation = file.getParent();
                     if (fileLocation.indexOf(directory) == 0) {
                     	fileLocation = fileLocation.substring(directory.length());
-                    	
+
                     	// in case of root folder, show "/" instead of blank
                     	fileLocation = fileLocation.length()==0 ? "/" : fileLocation;
                     }
-                    
+
                     // add to arraylist
                     flagDetails.add(new FlagDetails(flagKey, file.getName(), fileLocation, lineNumber, charNumber, line));
                 }
-                
+
                 // parse through the flag keys and find variable assignments for them
                 for (String flag : TechDebtClient.featureFlags) {
                 	pattern = Pattern.compile(Constants.REGEX_getVariable.replaceAll("FLAG_NAME", flag));
@@ -104,7 +120,7 @@ public class FlagUtils {
                 		TechDebtClient.flagKeyVars.put(matcher.group(0).split("=")[0].trim(), flag);
                 	}
                 }
-                
+
                 // if code references are not to be sent, remove them form the flag details
                 for (int x=0; !isAddCodeSnippet && flagDetails!=null && x<flagDetails.size(); x++) {
                 	flagDetail = flagDetails.get(x);
@@ -117,7 +133,7 @@ public class FlagUtils {
             System.err.println("Error reading file: " + file.getAbsolutePath());
             e.printStackTrace();
         }
-        
+
         return flagDetails;
     }
 }

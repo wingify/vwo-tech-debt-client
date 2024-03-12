@@ -1,3 +1,19 @@
+/**
+ * Copyright 2024 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.vwo.utils;
 
 import java.io.BufferedReader;
@@ -25,17 +41,17 @@ public class NetworkUtils {
 	// send flags in the code and get the recommendations for them
     public static String sendFlagsGetRecos(String accountId, String repoName, String repoBranch, ArrayList<FlagDetails> flagDetails, String apiToken, boolean isTesting) {
         StringBuffer response = new StringBuffer();
-        
+
         // call relaxed HTTPS validation before proceeding if testing
     	if(isTesting) {
             relaxedHTTPSValidation();
     	}
-        
+
         try {
             // convert flag details list to JSON string
             Gson gson = new Gson();
             String jsonParams = gson.toJson(flagDetails);
-            
+
             // add accountId, repoName, sdkKey and flag details to the params
             JsonObject json = new JsonObject();
             json.addProperty("accountId", Integer.parseInt(accountId));
@@ -43,10 +59,10 @@ public class NetworkUtils {
             json.addProperty("repoBranch", repoBranch);
             json.addProperty("detectedFlags", jsonParams);
             jsonParams = json.toString();
-            
+
             // marker
             System.out.println("\nParams : " + jsonParams);
-            
+
             // adding accountId to url
             String url = Constants.URL_GET_FLAG_RECOS.replaceAll("ACCOUNT_ID", accountId);
 
@@ -82,20 +98,20 @@ public class NetworkUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return response.toString();
     }
-	
+
     // get all flags for an account
     public static String getFlagsForAccount(String apiToken, boolean isTesting) {
         StringBuffer response = new StringBuffer();
     	String url = Constants.URL_GET_ALL_FLAGS;
-        
+
         // call relaxed HTTPS validation before proceeding if testing
     	if(isTesting) {
             relaxedHTTPSValidation();
     	}
-        
+
         try {
             // Create HTTP connection
             HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
@@ -119,10 +135,10 @@ public class NetworkUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return response.toString();
     }
-    
+
     // relaxed https validation for test app
     private static class RelaxedHostnameVerifier implements HostnameVerifier {
         // @Override
@@ -145,7 +161,7 @@ public class NetworkUtils {
 	        SSLContext sslContext;
 			sslContext = SSLContext.getInstance("TLS");
 	        sslContext.init(null, trustAllCertificates, new java.security.SecureRandom());
-	        
+
 	        // Set the default SSL socket factory and hostname verifier
             HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
             HttpsURLConnection.setDefaultHostnameVerifier(new RelaxedHostnameVerifier());
