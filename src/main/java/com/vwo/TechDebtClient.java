@@ -1,3 +1,19 @@
+/**
+ * Copyright 2024 Wingify Software Pvt. Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.vwo;
 
 import java.io.File;
@@ -15,22 +31,22 @@ import com.vwo.utils.NetworkUtils;
 public class TechDebtClient {
 	public static ArrayList<String> featureFlags;
 	public static ArrayList<FlagDetails> flagDetails;
-	
+
 	// variable flagkey assignments
 	public static HashMap<String, String> flagKeyVars = new HashMap<String, String>();
 
     public static void main(String[] args) {
     	HashMap<String, FlagDetails> flagDetails_hash = new HashMap<String, FlagDetails>();
     	GitUtils gitUtils;
-        
+
         // get mandatory params
         HashMap<String, String> params = CLIUtils.extractCommandLineParams(args);
         String directory = params.get(Constants.param_sourceFolder);
         String accountId = params.get(Constants.param_accountId);
         String apiToken = params.get(Constants.param_apiToken);
-        
+
         // System.out.println(apiToken);
-        
+
         // get optional params
         boolean isReferenceCode = params.containsKey(Constants.param_isReferenceCode) ?
         		Boolean.parseBoolean(params.get(Constants.param_isReferenceCode)) : false;
@@ -39,7 +55,7 @@ public class TechDebtClient {
         String repoURL = params.containsKey(Constants.param_repoURL) ? params.get(Constants.param_repoURL) : null;
         String repoBranch = params.containsKey(Constants.param_repoBranch) ? params.get(Constants.param_repoBranch) : null;
         String repoName;
-        
+
         // get git repo name and branch if not set from command line (not coming from jenkins job)
     	gitUtils = new GitUtils(directory);
         if (repoURL==null && repoBranch==null) {
@@ -49,10 +65,10 @@ public class TechDebtClient {
         	// extract repo name from repo url
         	repoName = gitUtils.extractRepoName(repoURL);
         }
-        
+
         // marker
         System.out.println("\nStarted VWO Tech Debt Client on " + repoName + ":" + repoBranch);
-        
+
         // get all feature flags for account
         System.out.println("Getting all feature flags for account : " + accountId);
         featureFlags = FeatureFlagParser.extractFeatureKeys(NetworkUtils.getFlagsForAccount(apiToken, isTesting));
@@ -61,7 +77,7 @@ public class TechDebtClient {
         // get the flag details from the code base
         System.out.println("Extracting flag details from the code base");
         flagDetails = FlagUtils.searchSourceFiles(new File(directory), Constants.REGEX_getFlag, isReferenceCode, directory);
-        
+
         // parse through the flag keys and combine common keys with added code references
         for (FlagDetails flagDetail : flagDetails) {
         	// if flag exists add code reference to existing object
@@ -71,18 +87,18 @@ public class TechDebtClient {
         		flagDetails_hash.put(flagDetail.getFlagKey(), flagDetail);
         	}
         }
-        
+
         // convert the hashmap back to arraylist
         flagDetails = new ArrayList<FlagDetails>(flagDetails_hash.values());
-        
+
         // replace variables used instead of flagkeys with actual flag keys
         FlagUtils.replaceVarsWithFlagKeys(flagDetails, featureFlags, flagKeyVars);
-        
+
         // add a deliberate delay to bypass HTTP 429
         try {
         	Thread.sleep(3000);
         } catch(InterruptedException e) {}
-        
+
         // send flag details to the server and show recommendations to the user
         System.out.println("Recommendations for feature flags : ");
         new RecommendationHandler(NetworkUtils.sendFlagsGetRecos(accountId, repoName, repoBranch, flagDetails, apiToken, isTesting)).showRecommendation();
